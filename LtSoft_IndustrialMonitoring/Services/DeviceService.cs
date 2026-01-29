@@ -77,11 +77,11 @@ namespace LtSoft_IndustrialMonitoring.Services
                 return false;
 
             // 只更新允许修改的字段
-            existingDevice.BaseName = device.BaseName;
-            existingDevice.DeviceIP = device.DeviceIP;
+            existingDevice.Name = device.Name;
+            existingDevice.IP = device.IP;
             existingDevice.Port = device.Port;
-            existingDevice.SqlTableName = device.SqlTableName;
-            existingDevice.DeviceAddresses = device.DeviceAddresses;
+            existingDevice.Type = device.Type;
+            existingDevice.Remarks = device.Remarks;
             existingDevice.IsOnline = device.IsOnline;
 
             try

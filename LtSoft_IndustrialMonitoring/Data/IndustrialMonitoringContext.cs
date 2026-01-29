@@ -23,13 +23,10 @@ namespace LtSoft_IndustrialMonitoring.Data
         {
             modelBuilder.Entity<Device>().ToTable("Devices");
 
-            // 配置DeviceAddresses数组的序列化
+            // 配置Type字段
             modelBuilder.Entity<Device>()
-                .Property(d => d.DeviceAddresses)
-                .HasConversion(
-                    v => string.Join(',', v),
-                    v => v.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToArray()
-                );
+                .Property(d => d.Type)
+                .HasMaxLength(255);
         }
     }
 }

@@ -9,7 +9,7 @@ namespace LtSoft_IndustrialMonitoring.Services
     /// </summary>
     public static class WebSocketManager
     {
-        private static readonly List<WebSocket> _sockets = new();
+        private static readonly List<WebSocket> _sockets = new List<WebSocket>();
 
         public static void Add(WebSocket socket)
         {
@@ -32,7 +32,7 @@ namespace LtSoft_IndustrialMonitoring.Services
             string json = JsonSerializer.Serialize(data);
             byte[] buffer = Encoding.UTF8.GetBytes(json);
 
-            List<WebSocket> toRemove = new();
+            List<WebSocket> toRemove = new List<WebSocket>();
             lock (_sockets)
             {
                 foreach (WebSocket socket in _sockets)

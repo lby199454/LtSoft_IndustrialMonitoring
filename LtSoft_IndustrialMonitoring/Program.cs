@@ -146,7 +146,7 @@ internal class Program
     }
 
     /// <summary>
-    /// 添加初始数据的示例方法
+    /// 添加初始数据的Unit Test方法
     /// </summary>
     /// <param name="context"></param>
     /// <returns></returns>
@@ -154,22 +154,22 @@ internal class Program
     {
         //// 检查是否已有数据
         //if (!context.Devices.Any())
-        {
-            context.Devices.Add(new Device
-            {
-                BaseName = "测试写入数据库",
-                DeviceIP = "127.0.0.1",
-                Port = 8080,
-                SqlTableName = "_tempdata",
-                DeviceAddresses = new int[] { 1, 2, 3, 4, 5, 6 },
-                IsOnline = false,
-                LastCommunication = DateTime.Now, //DateTime.Now.ToString("yyyy年MM月dd日 HH:mm:ss")
-                CreatedAt = DateTime.Now
-            });
+        //{
+        //    context.Devices.Add(new Device
+        //    {
+        //        BaseName = "测试写入数据库",
+        //        DeviceIP = "127.0.0.1",
+        //        Port = 8080,
+        //        SqlTableName = "_tempdata",
+        //        DeviceAddresses = new int[] { 1, 2, 3, 4, 5, 6 },
+        //        IsOnline = false,
+        //        LastCommunication = DateTime.Now, //DateTime.Now.ToString("yyyy年MM月dd日 HH:mm:ss")
+        //        CreatedAt = DateTime.Now
+        //    });
 
-            await context.SaveChangesAsync();
-            Console.WriteLine("初始数据已添加");
-        }
+        //    await context.SaveChangesAsync();
+        //    Console.WriteLine("初始数据已添加");
+        //}
         //else
         //{
         //    Console.WriteLine("这个if得去掉");

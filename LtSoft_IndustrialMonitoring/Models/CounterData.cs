@@ -90,4 +90,13 @@ namespace LtSoft_IndustrialMonitoring.Models
         public DateTime Start { get; set; }
         public DateTime End { get; set; }
     }
+
+    public class AllSiteStatRow
+    { 
+        public string SiteName { get; set; }
+        public string DeviceId { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
+        public int TotalCount { get; set; }
+}
 }

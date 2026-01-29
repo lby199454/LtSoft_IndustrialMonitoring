@@ -33,7 +33,7 @@ namespace LtSoft_IndustrialMonitoring.Communication
                 bool reachable = false;
 
                 using TcpClient tcpClient = new TcpClient();
-                Task connectTask = tcpClient.ConnectAsync(device.DeviceIP, device.Port);
+                Task connectTask = tcpClient.ConnectAsync(device.IP, device.Port);
                 Task timeoutTask = Task.Delay(TimeSpan.FromSeconds(3));
                 Task completedTask = await Task.WhenAny(connectTask, timeoutTask);
 
@@ -56,7 +56,7 @@ namespace LtSoft_IndustrialMonitoring.Communication
                     // 如果首次失败时间已经过去超过1分钟, 则判定为离线
                     if ((now - firstFail) >= TimeSpan.FromMinutes(1))
                     {
-                        _logger.LogWarning($"设备在1分钟内持续不可达，标记为离线: {device.BaseName} ({device.DeviceIP}:{device.Port})");
+                        _logger.LogWarning($"设备在1分钟内持续不可达，标记为离线: {device.Name} ({device.IP}:{device.Port})");
                         return false;
                     }
                     else
@@ -69,20 +69,20 @@ namespace LtSoft_IndustrialMonitoring.Communication
                 {
                     // 记录首次失败时间, 开始1分钟确认窗口
                     _firstFailureTimestamps[device.Id] = now;
-                    _logger.LogInformation($"首次检测到设备不可达，开始1分钟确认窗口: {device.BaseName} ({device.DeviceIP}:{device.Port})");
+                    _logger.LogInformation($"首次检测到设备不可达，开始1分钟确认窗口: {device.Name} ({device.IP}:{device.Port})");
                     return true;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error checking status for device {device.BaseName}");
+                _logger.LogError(ex, $"Error checking status for device {device.Name}");
                 // 不要在异常时立即认为离线, 保持原有状态, 除非此前已经在失败窗口超过1分钟
                 DateTime now = DateTime.Now;
                 if (_firstFailureTimestamps.TryGetValue(device.Id, out DateTime firstFail))
                 {
                     if ((now - firstFail) >= TimeSpan.FromMinutes(1))
                     {
-                        _logger.LogWarning($"设备在1分钟内持续异常，标记为离线: {device.BaseName} ({device.DeviceIP}:{device.Port})");
+                        _logger.LogWarning($"设备在1分钟内持续异常，标记为离线: {device.Name} ({device.IP}:{device.Port})");
                         return false;
                     }
                     return true;
@@ -107,7 +107,7 @@ namespace LtSoft_IndustrialMonitoring.Communication
             try
             {
                 using TcpClient tcpClient = new TcpClient();
-                await tcpClient.ConnectAsync(device.DeviceIP, device.Port);
+                await tcpClient.ConnectAsync(device.IP, device.Port);
 
                 using NetworkStream stream = tcpClient.GetStream();
                 using StreamWriter writer = new StreamWriter(stream);
@@ -121,7 +121,7 @@ namespace LtSoft_IndustrialMonitoring.Communication
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error sending command to device {device.BaseName}");
+                _logger.LogError(ex, $"Error sending command to device {device.Name}");
                 return $"ERROR: {ex.Message}";
             }
         }

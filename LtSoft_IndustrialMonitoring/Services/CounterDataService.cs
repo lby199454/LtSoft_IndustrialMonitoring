@@ -6,6 +6,7 @@ using LtSoft_IndustrialMonitoring.Data;
 using LtSoft_IndustrialMonitoring.Interfaces;
 using LtSoft_IndustrialMonitoring.Models;
 using Microsoft.EntityFrameworkCore;
+using MySqlConnector;
 using OfficeOpenXml;
 
 namespace LtSoft_IndustrialMonitoring.Services
@@ -15,6 +16,7 @@ namespace LtSoft_IndustrialMonitoring.Services
     /// </summary>
     public class CounterDataService : ICounterDataService
     {
+        private readonly string _connectionString;
         private readonly CounterDataContext _context;
         private readonly ILogger<CounterDataService> _logger;
 
@@ -67,10 +69,11 @@ namespace LtSoft_IndustrialMonitoring.Services
         /// </summary>
         /// <param name="context"></param>
         /// <param name="logger"></param>
-        public CounterDataService(CounterDataContext context, ILogger<CounterDataService> logger)
+        public CounterDataService(CounterDataContext context, ILogger<CounterDataService> logger, IConfiguration configuration)
         {
             _context = context;
             _logger = logger;
+            _connectionString = configuration.GetConnectionString("CounterDataContext");
         }
 
         /// <summary>
@@ -468,7 +471,6 @@ namespace LtSoft_IndustrialMonitoring.Services
         /// </summary>
         /// <param name="filter"></param>
         /// <returns></returns>
-        /// 
         public async Task<byte[]> ExportToExcelAsync(CounterDataFilter filter)
         {
             try
@@ -553,13 +555,13 @@ namespace LtSoft_IndustrialMonitoring.Services
             }
         }
 
-		/// <summary>
-		/// 导出所有站点的统计数据为Excel文件
-		/// </summary>
-		/// <param name="start"></param>
-		/// <param name="end"></param>
-		/// <returns></returns>
-		public async Task<byte[]> ExportAllSitesStatsExcelAsync(DateTime start, DateTime end)
+        /// <summary>
+        /// 导出所有站点的统计数据为Excel文件
+        /// </summary>
+        /// <param name="start"></param>
+        /// <param name="end"></param>
+        /// <returns></returns>
+        public async Task<byte[]> ExportAllSitesStatsExcelAsync(DateTime start, DateTime end)
         {
             try
             {
@@ -584,12 +586,12 @@ namespace LtSoft_IndustrialMonitoring.Services
 
                 // 生成Excel
                 using ExcelPackage package = new ExcelPackage();
-                ExcelWorksheet ws = package.Workbook.Worksheets.Add("AllSitesStats");
+                ExcelWorksheet ws = package.Workbook.Worksheets.Add("所有站点数据统计");
 
                 // 标题
                 ws.Cells[1, 1].Value = "站点";
-                ws.Cells[1, 2].Value = "统计开始";
-                ws.Cells[1, 3].Value = "统计结束";
+                ws.Cells[1, 2].Value = "开始时间";
+                ws.Cells[1, 3].Value = "结束时间";
                 ws.Cells[1, 4].Value = "总计数";
 
                 // 标题样式
@@ -621,6 +623,189 @@ namespace LtSoft_IndustrialMonitoring.Services
                 _logger.LogError(ex, "导出所有站点统计到Excel时出错");
                 throw;
             }
+        }
+
+        //public async Task<byte[]> ExportAllSitesStatsExcelAsync(DateTime start, DateTime end)
+        //{
+        //    // 获取所有站点
+        //    List<LocationInfo> allLocations = _locations.ToList();
+
+        //    // 准备Excel数据
+        //    List<AllSiteStatRow> excelData = new List<AllSiteStatRow>();
+
+        //    foreach (LocationInfo location in allLocations)
+        //    {
+        //        // 获取该站点所有设备ID
+        //        List<int> deviceIds = await GetDistinctDeviceIdsAsync(location.TableName, start, end);
+
+        //        if (deviceIds.Count == 0)
+        //        {
+        //            // 如果该站点没有设备数据，添加设备ID 1 的空数据
+        //            excelData.Add(new AllSiteStatRow
+        //            {
+        //                SiteName = location.DisplayName,
+        //                DeviceId = "1",
+        //                StartTime = start,
+        //                EndTime = end,
+        //                TotalCount = 0
+        //            });
+        //        }
+        //        else
+        //        {
+        //            // 对每个设备ID统计数据
+        //            foreach (int deviceId in deviceIds)
+        //            {
+        //                int count = await GetCountByDeviceIdAsync(location.TableName, deviceId, start, end);
+
+        //                excelData.Add(new AllSiteStatRow
+        //                {
+        //                    SiteName = location.DisplayName,
+        //                    DeviceId = deviceId.ToString(),
+        //                    StartTime = start,
+        //                    EndTime = end,
+        //                    TotalCount = count
+        //                });
+        //            }
+        //        }
+        //    }
+
+        //    // 生成Excel文件
+        //    return GenerateAllSitesExcel(excelData);
+        //}
+
+        /// <summary>
+        /// 获取指定表中在指定时间范围内所有不同的设备ID
+        /// </summary>
+        /// <param name="tableName"></param>
+        /// <param name="start"></param>
+        /// <param name="end"></param>
+        /// <returns></returns>
+        private async Task<List<int>> GetDistinctDeviceIdsAsync(string tableName, DateTime start, DateTime end)
+        {
+            MySqlConnection connection = new MySqlConnection(_connectionString);
+            await connection.OpenAsync();
+
+            try
+            {
+                using MySqlCommand command = connection.CreateCommand();
+                command.CommandText = $"SELECT DISTINCT device_id FROM `{tableName}` WHERE date_now >= @start AND date_now <= @end ORDER BY device_id";
+
+                command.Parameters.Add(new MySqlParameter("@start", start));
+                command.Parameters.Add(new MySqlParameter("@end", end));
+
+                List<int> deviceIds = new List<int>();
+                using MySqlDataReader reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    deviceIds.Add(reader.GetInt32("device_id"));
+                }
+
+                // 如果没有找到设备ID，但表确实应该有设备，确保至少包含设备ID 1
+                if (deviceIds.Count == 0)
+                {
+                    // 检查整个表是否有设备ID 1 或 2
+                    using MySqlCommand allDeviceCheckCmd = connection.CreateCommand();
+                    allDeviceCheckCmd.CommandText = $"SELECT DISTINCT device_id FROM `{tableName}` ORDER BY device_id LIMIT 2"; // 只取前两个
+
+                    using MySqlDataReader checkReader = await allDeviceCheckCmd.ExecuteReaderAsync();
+                    List<int> availableDevices = new List<int>();
+                    while (await checkReader.ReadAsync())
+                    {
+                        availableDevices.Add(checkReader.GetInt32("device_id"));
+                    }
+
+                    if (availableDevices.Count > 0)
+                    {
+                        // 返回可用的设备ID，限制在设备ID 1-2范围内
+                        return availableDevices.Where(id => id >= 1 && id <= 2).ToList();
+                    }
+                    else
+                    {
+                        return new List<int> { 1 }; // 默认返回设备ID 1
+                    }
+                }
+
+                return deviceIds;
+            }
+            finally
+            {
+                await connection.CloseAsync();
+            }
+        }
+
+        /// <summary>
+        /// 根据设备ID获取计数值
+        /// </summary>
+        /// <param name="tableName"></param>
+        /// <param name="deviceId"></param>
+        /// <param name="start"></param>
+        /// <param name="end"></param>
+        /// <returns></returns>
+        private async Task<int> GetCountByDeviceIdAsync(string tableName, int deviceId, DateTime start, DateTime end)
+        {
+            MySqlConnection connection = new MySqlConnection(_connectionString);
+            await connection.OpenAsync();
+
+            try
+            {
+                using MySqlCommand command = connection.CreateCommand();
+                command.CommandText = $"SELECT COALESCE(SUM(`count`), 0) FROM `{tableName}` WHERE device_id = @deviceId AND date_now >= @start AND date_now <= @end";
+
+                command.Parameters.Add(new MySqlParameter("@deviceId", deviceId));
+                command.Parameters.Add(new MySqlParameter("@start", start));
+                command.Parameters.Add(new MySqlParameter("@end", end));
+
+                object? result = await command.ExecuteScalarAsync();
+                return Convert.ToInt32(result ?? 0);
+            }
+            finally
+            {
+                await connection.CloseAsync();
+            }
+        }
+
+        /// <summary>
+        /// 生成所有站点统计的Excel文件
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        private static byte[] GenerateAllSitesExcel(List<AllSiteStatRow> data)
+        {
+            using ExcelPackage package = new ExcelPackage();
+            ExcelWorksheet worksheet = package.Workbook.Worksheets.Add("站点统计");
+
+            // 添加标题行
+            worksheet.Cells[1, 1].Value = "站点";
+            worksheet.Cells[1, 2].Value = "设备ID";
+            worksheet.Cells[1, 3].Value = "开始时间";
+            worksheet.Cells[1, 4].Value = "结束时间";
+            worksheet.Cells[1, 5].Value = "总计数";
+
+            // 设置标题样式
+            using (ExcelRange titleRange = worksheet.Cells[1, 1, 1, 5])
+            {
+                titleRange.Style.Font.Bold = true;
+                titleRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                titleRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+            }
+
+            // 添加数据行
+            for (int i = 0; i < data.Count; i++)
+            {
+                int row = i + 2;
+                AllSiteStatRow item = data[i];
+
+                worksheet.Cells[row, 1].Value = item.SiteName;
+                worksheet.Cells[row, 2].Value = item.DeviceId;
+                worksheet.Cells[row, 3].Value = item.StartTime.ToString("yyyy-MM-dd HH:mm:ss");
+                worksheet.Cells[row, 4].Value = item.EndTime.ToString("yyyy-MM-dd HH:mm:ss");
+                worksheet.Cells[row, 5].Value = item.TotalCount;
+            }
+
+            // 自动调整列宽
+            worksheet.Cells.AutoFitColumns();
+
+            return package.GetAsByteArray();
         }
     }
 }

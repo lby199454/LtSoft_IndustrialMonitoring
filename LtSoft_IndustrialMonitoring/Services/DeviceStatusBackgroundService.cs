@@ -45,14 +45,14 @@ namespace LtSoft_IndustrialMonitoring.Services
 
                         if (previousStatus && !device.IsOnline)
                         {
-                            sendAlertDeviceStatus.Add($"⚠️【设备掉线通知】:\n❌Name: {device.BaseName}\r\n IP: {device.DeviceIP}:{device.Port}\r\n Time: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\r\n" +
+                            sendAlertDeviceStatus.Add($"⚠️【设备掉线通知】:\n❌Name: {device.Name}\r\n IP: {device.IP}:{device.Port}\r\n Time: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\r\n" +
                                 $"💡请相关人员立即排查原因");
-                            _logger.LogWarning($"设备掉线: {device.BaseName}, IP: {device.DeviceIP}:{device.Port}");
+                            _logger.LogWarning($"设备掉线: {device.Name}, IP: {device.IP}:{device.Port}");
                         }
                         else if (!previousStatus && device.IsOnline)
                         {
-                            sendAlertDeviceStatus.Add($"✅【设备恢复通知】:\n✔Name: {device.BaseName}\r\n IP: {device.DeviceIP}:{device.Port}\r\n Time: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-                            _logger.LogInformation($"设备恢复在线: {device.BaseName}, IP: {device.DeviceIP}:{device.Port}");
+                            sendAlertDeviceStatus.Add($"✅【设备恢复通知】:\n✔Name: {device.Name}\r\n IP: {device.IP}:{device.Port}\r\n Time: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                            _logger.LogInformation($"设备恢复在线: {device.Name}, IP: {device.IP}:{device.Port}");
                         }
 
                         // 添加短暂延迟，避免同时检查所有设备
