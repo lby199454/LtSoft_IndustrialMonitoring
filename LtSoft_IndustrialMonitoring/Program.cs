@@ -1,4 +1,4 @@
-using System.Net.WebSockets;
+ï»¿using System.Net.WebSockets;
 using System.Text;
 using LtSoft_IndustrialMonitoring.Communication;
 using LtSoft_IndustrialMonitoring.Data;
@@ -13,166 +13,173 @@ using WebSocketManager = LtSoft_IndustrialMonitoring.Services.WebSocketManager;
 
 internal class Program
 {
-    private static void Main(string[] args)
-    {
-        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+	private static void Main(string[] args)
+	{
+		ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
-        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+		WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-        string host = builder.Configuration["Host"] ?? "http://0.0.0.0:7070";
+		string host = builder.Configuration["Host"] ?? "http://0.0.0.0:7070";
 
-        // Ìí¼Ó·şÎñµ½ÈİÆ÷
-        builder.Services.AddControllers();
-        builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
+		// æ·»åŠ æœåŠ¡åˆ°å®¹å™¨
+		builder.Services.AddControllers();
+		builder.Services.AddEndpointsApiExplorer();
+		builder.Services.AddSwaggerGen();
 
-        // ÅäÖÃÁ¬½Ó×Ö·û´®
-        string? devicesMonitorConnectionString = builder.Configuration["DevicesMonitoringContext"];
-        string? tempDataConnectionString = builder.Configuration["TemperatureDataContext"];
-        string? counterDataConnectionString = builder.Configuration["CounterDataContext"];
+		// é…ç½®è¿æ¥å­—ç¬¦ä¸²
+		string? devicesMonitorConnectionString = builder.Configuration["DevicesMonitoringContext"];
+		string? tempDataConnectionString = builder.Configuration["TemperatureDataContext"];
+		string? counterDataConnectionString = builder.Configuration["CounterDataContext"];
+		string? elecDataConnectionString = builder.Configuration["ElecMeterDataContext"];
 
-        // ÑéÖ¤Á¬½Ó×Ö·û´®
-        if (string.IsNullOrEmpty(devicesMonitorConnectionString) || string.IsNullOrEmpty(tempDataConnectionString) || string.IsNullOrEmpty(counterDataConnectionString))
-        {
-            throw new InvalidOperationException("MySQLÁ¬½Ó×Ö·û´®Î´ÅäÖÃ");
-        }
+		// éªŒè¯è¿æ¥å­—ç¬¦ä¸²
+		if (string.IsNullOrEmpty(devicesMonitorConnectionString) || string.IsNullOrEmpty(tempDataConnectionString) || string.IsNullOrEmpty(counterDataConnectionString) || string.IsNullOrEmpty(elecDataConnectionString))
+		{
+			throw new InvalidOperationException("MySQLè¿æ¥å­—ç¬¦ä¸²æœªé…ç½®");
+		}
 
-        // Ìí¼ÓÉè±¸¼à¿Ø Êı¾İ¿âÉÏÏÂÎÄ
-        builder.Services.AddDbContext<IndustrialMonitoringContext>(options =>
-            options.UseMySql(devicesMonitorConnectionString,
-            new MySqlServerVersion(new Version(8, 0, 36))));
+		// æ·»åŠ è®¾å¤‡ç›‘æ§ æ•°æ®åº“ä¸Šä¸‹æ–‡
+		builder.Services.AddDbContext<IndustrialMonitoringContext>(options =>
+			options.UseMySql(devicesMonitorConnectionString,
+			new MySqlServerVersion(new Version(8, 0, 36))));
 
-        // Ìí¼ÓÎÂ¶ÈÊı¾İ Êı¾İ¿âÉÏÏÂÎÄ
-        builder.Services.AddDbContext<TemperatureDataContext>(options =>
-            options.UseMySql(/*builder.Configuration.GetConnectionString*/(tempDataConnectionString),
-            new MySqlServerVersion(new Version(8, 0, 36))));
+		// æ·»åŠ æ¸©åº¦æ•°æ® æ•°æ®åº“ä¸Šä¸‹æ–‡
+		builder.Services.AddDbContext<TemperatureDataContext>(options =>
+			options.UseMySql(/*builder.Configuration.GetConnectionString*/(tempDataConnectionString),
+			new MySqlServerVersion(new Version(8, 0, 36))));
 
-        // Ìí¼ÓÉ¸·Ö¼ÆÊı Êı¾İ¿âÉÏÏÂÎÄ
-        builder.Services.AddDbContext<CounterDataContext>(options =>
-            options.UseMySql(/*builder.Configuration.GetConnectionString*/(counterDataConnectionString),
-            new MySqlServerVersion(new Version(8, 0, 36))));
+		// æ·»åŠ ç­›åˆ†è®¡æ•° æ•°æ®åº“ä¸Šä¸‹æ–‡
+		builder.Services.AddDbContext<CounterDataContext>(options =>
+			options.UseMySql(/*builder.Configuration.GetConnectionString*/(counterDataConnectionString),
+			new MySqlServerVersion(new Version(8, 0, 36))));
 
-        // ×¢²áÎÂ¶ÈÊı¾İµ¼³ö¡¢Éè±¸¼à¿Ø¡¢É¸·Ö¼ÆÊı·şÎñ    
-        builder.Services.AddSingleton<IDeviceCommunicationService, DeviceCommunicationService>();
-        builder.Services.AddScoped<IDeviceService, DeviceService>();
-        builder.Services.AddScoped<ITemperatureDataService, TemperatureDataService>();
-        builder.Services.AddScoped<ICounterDataService, CounterDataService>();
-        builder.Services.AddHostedService<DeviceStatusBackgroundService>();
+		// æ·»åŠ ç”µè¡¨æ•°æ® æ•°æ®åº“ä¸Šä¸‹æ–‡
+		builder.Services.AddDbContext<ElecMeterDataContext>(options =>
+			options.UseMySql(elecDataConnectionString,
+			new MySqlServerVersion(new Version(8, 0, 36))));
 
-        // Ìí¼ÓCORS²ßÂÔ
-        builder.Services.AddCors(options =>
-        {
-            options.AddPolicy("AllowSpecificOrigin", policy =>
-            {
-                policy.WithOrigins("http://211.137.106.175:82", "http://localhost:82")
-                      .AllowAnyOrigin()
-                      .AllowAnyMethod()
-                      .AllowAnyHeader();
-            });
-        });
+		// æ³¨å†Œæ¸©åº¦æ•°æ®å¯¼å‡ºã€è®¾å¤‡ç›‘æ§ã€ç­›åˆ†è®¡æ•°æœåŠ¡    
+		builder.Services.AddSingleton<IDeviceCommunicationService, DeviceCommunicationService>();
+		builder.Services.AddScoped<IDeviceService, DeviceService>();
+		builder.Services.AddScoped<ITemperatureDataService, TemperatureDataService>();
+		builder.Services.AddScoped<ICounterDataService, CounterDataService>();
+		builder.Services.AddScoped<IElecMeterDataService, ElecMeterDataService>();
+		builder.Services.AddHostedService<DeviceStatusBackgroundService>();
 
-        // Ìí¼ÓJWTÉí·İÑéÖ¤
-        JwtSettings? jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
-        builder.Services.Configure<List<UserConfig>>(builder.Configuration.GetSection("Users"));
-        builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
-        builder.Services.AddAuthentication(options =>
-        {
-            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-        })
-        .AddJwtBearer(options =>
-        {
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
-                ValidIssuer = jwtSettings.Issuer,
-                ValidAudience = jwtSettings.Audience,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey))
-            };
-        });
+		// æ·»åŠ CORSç­–ç•¥
+		builder.Services.AddCors(options =>
+		{
+			options.AddPolicy("AllowSpecificOrigin", policy =>
+			{
+				policy.WithOrigins("http://211.137.106.175:82", "http://localhost:82")
+					  .AllowAnyOrigin()
+					  .AllowAnyMethod()
+					  .AllowAnyHeader();
+			});
+		});
 
-        builder.Services.AddControllers();
-        builder.Services.AddScoped<IAuthService, AuthService>();
+		// æ·»åŠ JWTèº«ä»½éªŒè¯
+		JwtSettings? jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
+		builder.Services.Configure<List<UserConfig>>(builder.Configuration.GetSection("Users"));
+		builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+		builder.Services.AddAuthentication(options =>
+		{
+			options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+			options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+		})
+		.AddJwtBearer(options =>
+		{
+			options.TokenValidationParameters = new TokenValidationParameters
+			{
+				ValidateIssuer = true,
+				ValidateAudience = true,
+				ValidateLifetime = true,
+				ValidateIssuerSigningKey = true,
+				ValidIssuer = jwtSettings.Issuer,
+				ValidAudience = jwtSettings.Audience,
+				IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey))
+			};
+		});
 
-        WebApplication app = builder.Build();
+		builder.Services.AddControllers();
+		builder.Services.AddScoped<IAuthService, AuthService>();
 
-        // ÅäÖÃHTTPÇëÇó¹ÜµÀ
-        if (app.Environment.IsDevelopment())
-        {
-            app.UseSwagger();
-            app.UseSwaggerUI();
-        }
+		WebApplication app = builder.Build();
 
-        //IServiceScope scope = app.Services.CreateScope();
-        //IndustrialMonitoringContext dbContext = scope.ServiceProvider.GetRequiredService<IndustrialMonitoringContext>();
-        ////dbContext.Database.EnsureCreated();
-        //await SeedData(dbContext);
+		// é…ç½®HTTPè¯·æ±‚ç®¡é“
+		if (app.Environment.IsDevelopment())
+		{
+			app.UseSwagger();
+			app.UseSwaggerUI();
+		}
 
-        app.UseCors("AllowSpecificOrigin");
-        app.UseAuthentication();
-        app.UseAuthorization();
-        app.MapControllers();
-        app.UseWebSockets();
-        app.Map("/ws/devices", async context =>
-        {
-            if (context.WebSockets.IsWebSocketRequest)
-            {
-                using WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                WebSocketManager.Add(webSocket);
+		//IServiceScope scope = app.Services.CreateScope();
+		//IndustrialMonitoringContext dbContext = scope.ServiceProvider.GetRequiredService<IndustrialMonitoringContext>();
+		////dbContext.Database.EnsureCreated();
+		//await SeedData(dbContext);
 
-                byte[] buffer = new byte[1024 * 4];
-                while (webSocket.State == WebSocketState.Open)
-                {
-                    WebSocketReceiveResult result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                    if (result.MessageType == WebSocketMessageType.Close)
-                    {
-                        WebSocketManager.Remove(webSocket);
-                        await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by client", CancellationToken.None);
-                    }
-                }
-            }
-            else
-            {
-                context.Response.StatusCode = 400;
-            }
-        });
+		app.UseCors("AllowSpecificOrigin");
+		app.UseAuthentication();
+		app.UseAuthorization();
+		app.MapControllers();
+		app.UseWebSockets();
+		app.Map("/ws/devices", async context =>
+		{
+			if (context.WebSockets.IsWebSocketRequest)
+			{
+				using WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
+				WebSocketManager.Add(webSocket);
 
-        ILogger<Program> logger = app.Services.GetRequiredService<ILogger<Program>>();
-        logger.LogInformation("·şÎñÕıÔÚÆô¶¯£¬¼àÌıµØÖ·: {Host}", host);
-        app.Run(host);
-    }
+				byte[] buffer = new byte[1024 * 4];
+				while (webSocket.State == WebSocketState.Open)
+				{
+					WebSocketReceiveResult result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+					if (result.MessageType == WebSocketMessageType.Close)
+					{
+						WebSocketManager.Remove(webSocket);
+						await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by client", CancellationToken.None);
+					}
+				}
+			}
+			else
+			{
+				context.Response.StatusCode = 400;
+			}
+		});
 
-    /// <summary>
-    /// Ìí¼Ó³õÊ¼Êı¾İµÄUnit Test·½·¨
-    /// </summary>
-    /// <param name="context"></param>
-    /// <returns></returns>
-    private static async Task SeedData(IndustrialMonitoringContext context)
-    {
-        //// ¼ì²éÊÇ·ñÒÑÓĞÊı¾İ
-        //if (!context.Devices.Any())
-        //{
-        //    context.Devices.Add(new Device
-        //    {
-        //        BaseName = "²âÊÔĞ´ÈëÊı¾İ¿â",
-        //        DeviceIP = "127.0.0.1",
-        //        Port = 8080,
-        //        SqlTableName = "_tempdata",
-        //        DeviceAddresses = new int[] { 1, 2, 3, 4, 5, 6 },
-        //        IsOnline = false,
-        //        LastCommunication = DateTime.Now, //DateTime.Now.ToString("yyyyÄêMMÔÂddÈÕ HH:mm:ss")
-        //        CreatedAt = DateTime.Now
-        //    });
+		ILogger<Program> logger = app.Services.GetRequiredService<ILogger<Program>>();
+		logger.LogInformation("æœåŠ¡æ­£åœ¨å¯åŠ¨ï¼Œç›‘å¬åœ°å€: {Host}", host);
+		app.Run(host);
+	}
 
-        //    await context.SaveChangesAsync();
-        //    Console.WriteLine("³õÊ¼Êı¾İÒÑÌí¼Ó");
-        //}
-        //else
-        //{
-        //    Console.WriteLine("Õâ¸öifµÃÈ¥µô");
-        //}
-    }
+	/// <summary>
+	/// æ·»åŠ åˆå§‹æ•°æ®çš„Unit Testæ–¹æ³•
+	/// </summary>
+	/// <param name="context"></param>
+	/// <returns></returns>
+	private static async Task SeedData(IndustrialMonitoringContext context)
+	{
+		//// æ£€æŸ¥æ˜¯å¦å·²æœ‰æ•°æ®
+		//if (!context.Devices.Any())
+		//{
+		//    context.Devices.Add(new Device
+		//    {
+		//        BaseName = "æµ‹è¯•å†™å…¥æ•°æ®åº“",
+		//        DeviceIP = "127.0.0.1",
+		//        Port = 8080,
+		//        SqlTableName = "_tempdata",
+		//        DeviceAddresses = new int[] { 1, 2, 3, 4, 5, 6 },
+		//        IsOnline = false,
+		//        LastCommunication = DateTime.Now, //DateTime.Now.ToString("yyyyå¹´MMæœˆddæ—¥ HH:mm:ss")
+		//        CreatedAt = DateTime.Now
+		//    });
+
+		//    await context.SaveChangesAsync();
+		//    Console.WriteLine("åˆå§‹æ•°æ®å·²æ·»åŠ ");
+		//}
+		//else
+		//{
+		//    Console.WriteLine("è¿™ä¸ªifå¾—å»æ‰");
+		//}
+	}
 }
